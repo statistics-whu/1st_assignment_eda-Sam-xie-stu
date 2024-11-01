@@ -1,0 +1,170 @@
+---
+title: "第一次作业你的报告题目"
+CJKmainfont: Songti SC
+author: "谢宝进"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    fig_caption: yes
+    fig_width: 10
+    highlight: tango
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+  word_document:
+    toc: yes
+  pdf_document:
+    latex_engine: xelatex
+---
+```{r setup, include = FALSE,echo = FALSE}
+knitr::opts_chunk$set(echo = FALSE,error = FALSE, warning = FALSE, message = FALSE,
+                      out.width = "100%", split = FALSE, fig.align = "center")
+#load library
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+# 你的主要发现
+
+1. 房价与区域位置呈现相关性
+
+1. 卧室数量与建筑面积无相关性
+  
+1. 房价与建筑面积呈现相关性
+    
+
+# 数据介绍
+
+本报告**链家**数据获取方式如下：
+    
+报告人在2023年9月12日获取了[链家武汉二手房网站](https://wh.lianjia.com/ershoufang/)数据。
+    
+- 链家二手房网站默认显示100页，每页30套房产，因此本数据包括3000套房产信息；
+    
+- 数据包括了页面可见部分的文本信息，具体字段及说明见作业说明。
+
+ **说明：**数据仅用于教学；由于不清楚链家数据的展示规则，因此数据可能并不是武汉二手房市场的随机抽样，结论很可能有很大的偏差，甚至可能是错误的。
+    
+```{r}
+# 载入数据和预处理
+
+lj<- read_csv("2023-09-12_cleaned.csv")
+# EDA ---------------------------------------------------------------------
+```
+
+# 数据概览
+
+查看数据表（lj)结构，表的前10行示例如下：
+
+```{r}
+str(lj) #查看数据结构
+head(10) #表的前10行
+```
+
+#极端值处理，并将处理完的数据存储于lj1中
+```{r}
+#识别极端值
+Q1 <- quantile(lj$price_ttl, 0.25)  # 计算第一四分位数（Q1） 
+Q3 <- quantile(lj$price_ttl, 0.75)  # 计算第三四分位数（Q3）
+IQR <- Q3 - Q1  # 计算四分位距（IQR）
+# 确定异常值的阈值  
+lower_value <- Q1 - 1.5 * IQR  
+upper_value <- Q3 + 1.5 * IQR  
+#删除极端值并形成行的数据表data_new
+filter_lj <- lj%>%
+filter(lj$price_ttl>=lower_value&lj$price_ttl<=upper_value)
+lj1 <- filter_lj
+boxplot(lj1$price_ttl)
+```
+
+各变量的简短统计：
+```{r}
+summary(lj1)
+```
+
+可以看到：
+
+- 直观结论1：变量的类型
+
+- 直观结论2：数值型变量的最小值、最大值、平均值、中位值、第一四分位数和第三四分位数
+
+
+# 探索性分析
+
+## 变量1：房价的数值描述与图形
+```{r}
+mean_price <- mean(lj1$price_ttl)
+median_price <- median(lj1$price_ttl)
+max_price <- max(lj1$price_ttl)
+min_price <- min(lj1$price_ttl)
+sd_price <- sd(lj1$price_ttl)
+hist(lj1$price_ttl)
+```
+
+发现：
+
+- 发现1:去除极端值后的房价区间为10.6~325
+
+- 发现2：房价中位数位137
+
+## 变量2:区域内房价的数值描述与图形
+```{r}
+region_price_means <- lj1 %>%
+    group_by(property_region) %>%
+    summarize(mean_price = mean(price_ttl))
+ggplot(region_price_means, aes(x = property_region, y = mean_price)) +
+    geom_bar(stat = "identity") +
+    xlab("区域") +
+    ylab("房价均值（万元）") +
+    ggtitle("不同区域的房价均值")
+```
+
+发现：
+
+- 发现1:房价与区域位置存在一定关系
+
+- 发现2：商业区的房价普遍较高
+
+## 探索问题1：房价与建筑面积的关系
+```{r}
+ggplot(lj1, aes(x = building_area, y = price_ttl)) +
+    geom_point() #绘制散点图
+```
+发现：
+ 房价与建筑面积之间也存在正相关关系，建筑面积越大，房价越高。
+
+## 探索问题2:卧室数量与建筑面积的关系
+```{r}
+ggplot(lj1, aes(x = building_area, y = bedrooms)) +
+    geom_point()
+```
+发现：
+ 卧室数量与建筑面积之间没有明显的线性关系
+
+## 探索问题3:不同区域的房价差异
+```{r}
+price_by_region <- lj1 %>%
+    group_by(property_region) %>%
+    summarize(mean_price = mean(price_ttl)) #按区域分组计算房价均值
+ggplot(price_by_region, aes(x = property_region, y = mean_price)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    ggtitle("不同区域的房价均值")  #绘制柱状图
+```
+发现：
+不同区域的房价存在明显差异，一些区域的房价较高，如 CBD 西北湖、王家湾等，而一些区域的房价相对较低。
+---
+
+# 发现总结
+
+
+总结1：商业地段及城市中心地段的房价较高，且均价相差不大。
+
+总结2：中心区域价格普遍高于远城区房价
+
+总结3：建筑面积越大，房价越高
+
+
+
